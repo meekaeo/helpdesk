@@ -42,26 +42,28 @@ export async function POST(request) {
     const body = await request.json();
     const url  = process.env.APPS_SCRIPT_URL;
 
-    const res  = await fetch(url, {
-      method  : 'POST',
-      headers : { 'Content-Type': 'text/plain;charset=utf-8' },
-      body    : JSON.stringify(body),
+    // ส่งไป Apps Script
+    const res = await fetch(url, {
+      method : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body   : JSON.stringify(body),
       redirect: 'follow',
     });
-    const text = await res.text();
 
+    const text = await res.text();
     let result;
-    if (text.startsWith('<')) {
-      const res2     = await fetch(url, { redirect: 'follow' });
-      const finalUrl = res2.url;
-      const res3     = await fetch(finalUrl, {
+
+    try {
+      result = JSON.parse(text);
+    } catch {
+      // ถ้า parse ไม่ได้ ลอง fetch อีกครั้งด้วย URL ที่ redirect แล้ว
+      const finalUrl = res.url;
+      const res2 = await fetch(finalUrl, {
         method : 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        headers: { 'Content-Type': 'application/json' },
         body   : JSON.stringify(body),
       });
-      result = JSON.parse(await res3.text());
-    } else {
-      result = JSON.parse(text);
+      result = JSON.parse(await res2.text());
     }
 
     // ส่ง email แยก try/catch ไม่ให้กระทบ ticket
