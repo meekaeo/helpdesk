@@ -10,9 +10,9 @@ const CATEGORIES = [
 ];
 
 const PRIORITIES = [
-  { id: 'low',      label: '🟢 ปกติ',    sla: 'ภายใน 1-2 วันทำการ' },
-  { id: 'medium',   label: '🟡 เร่งด่วน', sla: 'ภายใน 8 ชั่วโมง' },
-  { id: 'critical', label: '🔴 วิกฤต',   sla: 'ภายใน 4 ชั่วโมง' },
+  { id: 'low',      label: '🟢 ปกติ / Normal',       sla: 'ภายใน 1-2 วันทำการ / 1-2 Business Days' },
+  { id: 'medium',   label: '🟡 เร่งด่วน / Urgent',    sla: 'ภายใน 8 ชั่วโมง / 8 Hours' },
+  { id: 'critical', label: '🔴 วิกฤต / Critical',     sla: 'ภายใน 4 ชั่วโมง / 4 Hours' },
 ];
 
 export default function Home() {
