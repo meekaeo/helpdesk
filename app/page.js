@@ -1,203 +1,239 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
-const CATEGORIES = [
-  { id: 'hardware', label: 'Hardware',  icon: '🖥', sub: 'คอมพิวเตอร์, เครื่องพิมพ์' },
-  { id: 'software', label: 'Software',  icon: '💾', sub: 'โปรแกรม, แอปพลิเคชัน' },
-  { id: 'network',  label: 'Network',   icon: '🌐', sub: 'อินเทอร์เน็ต, WiFi, VPN' },
-  { id: 'account',  label: 'Account',   icon: '🔑', sub: 'รหัสผ่าน, สิทธิ์การเข้าถึง' },
-  { id: 'other',    label: 'อื่นๆ',     icon: '📋', sub: 'ปัญหานอกเหนือจากหมวดหมู่ข้างต้น' },
-];
+const STATUS_OPTIONS = ['รับเรื่อง', 'กำลังดำเนินการ', 'เสร็จสิ้น'];
 
-const PRIORITIES = [
-  { id: 'low',      label: '🟢 ปกติ / Normal',       sla: 'ภายใน 1-2 วันทำการ / 1-2 Business Days' },
-  { id: 'medium',   label: '🟡 เร่งด่วน / Urgent',    sla: 'ภายใน 8 ชั่วโมง / 8 Hours' },
-  { id: 'critical', label: '🔴 วิกฤต / Critical',     sla: 'ภายใน 4 ชั่วโมง / 4 Hours' },
-];
+const statusStyle = {
+  'รับเรื่อง'       : { background:'#dbeafe', color:'#1e40af', border:'1px solid #93c5fd' },
+  'กำลังดำเนินการ' : { background:'#fef3c7', color:'#92400e', border:'1px solid #fcd34d' },
+  'เสร็จสิ้น'      : { background:'#d1fae5', color:'#065f46', border:'1px solid #6ee7b7' },
+};
 
-export default function Home() {
-  const [category,    setCategory]    = useState('');
-  const [priority,    setPriority]    = useState('low');
-  const [name,        setName]        = useState('');
-  const [email,       setEmail]       = useState('');
-  const [phone,       setPhone]       = useState('');
-  const [department,  setDepartment]  = useState('');
-  const [subject,     setSubject]     = useState('');
-  const [description, setDescription] = useState('');
-  const [file,        setFile]        = useState(null);
-  const [loading,     setLoading]     = useState(false);
-  const [ticketId,    setTicketId]    = useState('');
-  const [done,        setDone]        = useState(false);
-  const [error,       setError]       = useState('');
+export default function AdminPage() {
+  const [tickets,   setTickets]   = useState([]);
+  const [loading,   setLoading]   = useState(true);
+  const [filter,    setFilter]    = useState('all');
+  const [search,    setSearch]    = useState('');
+  const [selected,  setSelected]  = useState(null);
+  const [newStatus, setNewStatus] = useState('');
+  const [note,      setNote]      = useState('');
+  const [saving,    setSaving]    = useState(false);
+  const [toast,     setToast]     = useState('');
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (!category) { setError('กรุณาเลือกหมวดหมู่ปัญหา'); return; }
-    setError('');
-    setLoading(true);
-
-    let filePayload = null;
-    if (file) {
-      const buffer = await file.arrayBuffer();
-      const bytes  = new Uint8Array(buffer);
-      let binary   = '';
-      bytes.forEach(b => binary += String.fromCharCode(b));
-      filePayload = { name: file.name, mimeType: file.type, data: btoa(binary) };
+  useEffect(() => {
+    async function loadTickets() {
+      try {
+        const res  = await fetch('/api/tickets');
+        const data = await res.json();
+        if (data.success) setTickets(data.tickets);
+      } catch (err) {
+        console.error('โหลด ticket ไม่ได้:', err);
+      } finally {
+        setLoading(false);
+      }
     }
+    loadTickets();
+  }, []);
 
+  function openModal(t) {
+    setSelected(t);
+    setNewStatus(t.status);
+    setNote('');
+  }
+
+  async function handleSave() {
+    if (!selected) return;
+    setSaving(true);
     try {
-      const res  = await fetch('/api/submit', {
+      await fetch('/api/update-status', {
         method : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body   : JSON.stringify({
-          name, email, phone, department,
-          category, priority, subject, description,
-          file: filePayload,
+          ticketId : selected.id,
+          newStatus,
+          note,
+          userEmail: selected.email,
+          userName : selected.name,
+          subject  : selected.subject,
         }),
       });
-      const data = await res.json();
-      if (data.success) { setTicketId(data.ticketId); setDone(true); }
-      else setError(data.error || 'เกิดข้อผิดพลาด');
+      setTickets(prev => prev.map(t => t.id === selected.id ? { ...t, status: newStatus } : t));
+      setToast(newStatus === 'เสร็จสิ้น' ? '✅ ปิดงานแล้ว — กำลังส่ง Email + CSAT...' : '✅ อัปเดตสถานะเรียบร้อย');
+      setTimeout(() => setToast(''), 3000);
+      setSelected(null);
     } catch {
-      setError('ไม่สามารถเชื่อมต่อได้');
+      setToast('❌ เกิดข้อผิดพลาด');
     }
-    setLoading(false);
+    setSaving(false);
   }
 
-  function resetForm() {
-    setDone(false); setCategory(''); setName(''); setEmail('');
-    setPhone(''); setDepartment(''); setSubject(''); setDescription('');
-    setFile(null); setTicketId(''); setError('');
-  }
+  const priLabel = { critical:'🔴 วิกฤต', medium:'🟡 เร่งด่วน', low:'🟢 ปกติ' };
 
-  if (done) return (
-    <main style={s.page}>
-      <div style={s.successCard}>
-        <div style={{fontSize:56, marginBottom:16}}>✅</div>
-        <h2 style={{fontSize:22, fontWeight:600, marginBottom:8}}>ส่งคำร้องเรียบร้อยแล้ว!</h2>
-        <p style={{color:'#5a8c85', marginBottom:20}}>ทีมไอทีได้รับเรื่องแล้ว ระบบจะส่ง Email ยืนยันให้คุณในไม่ช้า</p>
-        <div style={s.ticketBadge}>{ticketId}</div>
-        <p style={{fontSize:12, color:'#5a8c85', marginTop:12}}>กรุณาเก็บ Ticket ID นี้ไว้อ้างอิง</p>
-        <button style={s.btnOutline} onClick={resetForm}>แจ้งปัญหาเพิ่มเติม</button>
-      </div>
-    </main>
-  );
+  const filtered = tickets.filter(t => {
+    const matchFilter = filter === 'all' || t.status === filter;
+    const q = search.toLowerCase();
+    const matchSearch = !search ||
+      String(t.id).toLowerCase().includes(q) ||
+      String(t.name).toLowerCase().includes(q) ||
+      String(t.subject).toLowerCase().includes(q);
+    return matchFilter && matchSearch;
+  });
 
   return (
-    <main style={s.page}>
-      <div style={s.container}>
+    <div style={s.page}>
 
-        <div style={s.header}>
+      {/* Topbar */}
+      <div style={s.topbar}>
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
           <div style={s.logo}>🛠</div>
           <div>
-            <h1 style={s.title}>IT Help Desk</h1>
-            <p style={s.subtitle}>แจ้งปัญหา / Request Support</p>
+            <div style={{fontSize:15,fontWeight:600}}>IT Help Desk — Admin</div>
+            <div style={{fontSize:11,color:'#5a8c85'}}>จัดการ Ticket ทั้งหมด</div>
           </div>
         </div>
-
-        <form onSubmit={handleSubmit}>
-
-          <div style={s.card}>
-            <div style={s.cardTitle}>หมวดหมู่ปัญหา <span style={{color:'#c0392b'}}>*</span></div>
-            <div style={s.catGrid}>
-              {CATEGORIES.map(c => (
-                <div key={c.id}
-                  style={{...s.catChip, ...(category===c.id ? s.catChipActive : {})}}
-                  onClick={() => setCategory(c.id)}>
-                  <span style={{fontSize:20}}>{c.icon}</span>
-                  <div>
-                    <div style={{fontWeight:500, fontSize:13}}>{c.label}</div>
-                    <div style={{fontSize:11, color:'#5a8c85', marginTop:2}}>{c.sub}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div style={s.card}>
-            <div style={s.cardTitle}>ข้อมูลผู้แจ้ง</div>
-            <div style={s.field}>
-              <label style={s.label}>ชื่อ-นามสกุล <span style={{color:'#c0392b'}}>*</span></label>
-              <input style={s.input} value={name} onChange={e=>setName(e.target.value)} placeholder="เช่น สมชาย ใจดี" required/>
-            </div>
-            <div style={s.field}>
-              <label style={s.label}>อีเมล <span style={{color:'#c0392b'}}>*</span></label>
-              <input style={s.input} type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="yourname@company.com" required/>
-            </div>
-            <div style={s.field}>
-              <label style={s.label}>เบอร์โทรศัพท์</label>
-              <input style={s.input} type="tel" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="เช่น 081-234-5678"/>
-            </div>
-            <div style={s.field}>
-              <label style={s.label}>แผนก / ตำแหน่ง</label>
-              <input style={s.input} value={department} onChange={e=>setDepartment(e.target.value)} placeholder="เช่น ฝ่ายบัญชี"/>
-            </div>
-          </div>
-
-          <div style={s.card}>
-            <div style={s.cardTitle}>รายละเอียดปัญหา</div>
-            <div style={s.field}>
-              <label style={s.label}>หัวข้อปัญหา <span style={{color:'#c0392b'}}>*</span></label>
-              <input style={s.input} value={subject} onChange={e=>setSubject(e.target.value)} placeholder="สรุปปัญหาสั้นๆ" required/>
-            </div>
-            <div style={s.field}>
-              <label style={s.label}>อธิบายอาการ <span style={{color:'#c0392b'}}>*</span></label>
-              <textarea style={s.textarea} value={description} onChange={e=>setDescription(e.target.value)} placeholder="อธิบายรายละเอียดให้ครบถ้วน..." required/>
-            </div>
-            <div style={s.field}>
-              <label style={s.label}>ความเร่งด่วน</label>
-              <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
-                {PRIORITIES.map(p => (
-                  <div key={p.id}
-                    style={{...s.priChip, ...(priority===p.id ? s.priChipActive : {})}}
-                    onClick={() => setPriority(p.id)}>
-                    {p.label}
-                    <span style={{fontSize:10, opacity:.7, marginLeft:4}}>({p.sla})</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div style={s.field}>
-              <label style={s.label}>แนบไฟล์ (ถ้ามี)</label>
-              <input type="file" accept="image/*,.pdf" onChange={e=>setFile(e.target.files[0])}
-                style={{...s.input, padding:'8px 12px', cursor:'pointer'}}/>
-              {file && <div style={{fontSize:12, color:'#0f7a60', marginTop:4}}>✓ {file.name}</div>}
-            </div>
-          </div>
-
-          {error && <div style={s.errorBox}>{error}</div>}
-
-          <button type="submit" style={s.btnSubmit} disabled={loading}>
-            {loading ? '⏳ กำลังส่ง...' : '📨 ส่งคำร้อง — Submit Ticket'}
-          </button>
-
-        </form>
+        <div style={s.badge}>👤 IT Admin</div>
       </div>
-    </main>
+
+      <div style={{maxWidth:1100,margin:'0 auto',padding:'20px 16px'}}>
+
+        {/* KPI */}
+        <div style={s.kpiRow}>
+          {[
+            { label:'🎫 ทั้งหมด',    val: tickets.length,                                          color:'#1565a0' },
+            { label:'🔵 รับเรื่อง',  val: tickets.filter(t=>t.status==='รับเรื่อง').length,       color:'#1a7f72' },
+            { label:'🟡 ดำเนินการ',  val: tickets.filter(t=>t.status==='กำลังดำเนินการ').length,  color:'#c07a10' },
+            { label:'✅ เสร็จสิ้น',  val: tickets.filter(t=>t.status==='เสร็จสิ้น').length,       color:'#0f7a60' },
+          ].map((k,i) => (
+            <div key={i} style={s.kpiCard}>
+              <div style={{fontSize:26,fontWeight:600,color:k.color}}>{k.val}</div>
+              <div style={{fontSize:11,color:'#5a8c85'}}>{k.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Filter + Search */}
+        <div style={s.filterBar}>
+          {[['all','ทั้งหมด'],['รับเรื่อง','รับเรื่อง'],['กำลังดำเนินการ','ดำเนินการ'],['เสร็จสิ้น','เสร็จสิ้น']].map(([val,label]) => (
+            <div key={val}
+              style={{...s.chip,...(filter===val?s.chipActive:{})}}
+              onClick={()=>setFilter(val)}>{label}</div>
+          ))}
+          <input style={s.search} placeholder="🔍 ค้นหา Ticket, ชื่อ..."
+            value={search} onChange={e=>setSearch(e.target.value)}/>
+          <button style={s.btnRefresh} onClick={async()=>{
+            setLoading(true);
+            const res=await fetch('/api/tickets');
+            const data=await res.json();
+            if(data.success) setTickets(data.tickets);
+            setLoading(false);
+          }}>🔄 Refresh</button>
+        </div>
+
+        {/* Table */}
+        <div style={s.tableWrap}>
+          {loading ? (
+            <div style={{textAlign:'center',padding:40,color:'#5a8c85'}}>⏳ กำลังโหลด...</div>
+          ) : (
+            <table style={{width:'100%',borderCollapse:'collapse'}}>
+              <thead>
+                <tr style={{borderBottom:'1.5px solid #b0d8d0'}}>
+                  {['Ticket ID','วันที่','ผู้แจ้ง / แผนก','หมวดหมู่','หัวข้อ','ความเร่งด่วน','สถานะ','Action'].map(h=>(
+                    <th key={h} style={s.th}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr><td colSpan={8} style={{textAlign:'center',padding:40,color:'#5a8c85'}}>
+                    ไม่มี Ticket
+                  </td></tr>
+                ) : filtered.map((t,i) => (
+                  <tr key={i} style={s.tr} onClick={()=>openModal(t)}>
+                    <td style={{...s.td,fontFamily:'monospace',color:'#1a7f72',fontWeight:500}}>{t.id}</td>
+                    <td style={{...s.td,color:'#5a8c85',fontSize:12}}>{String(t.date)}</td>
+                    <td style={s.td}>
+                      <div style={{fontSize:13}}>{t.name}</div>
+                      <div style={{fontSize:11,color:'#5a8c85'}}>{t.department}</div>
+                    </td>
+                    <td style={{...s.td,fontSize:12}}>{t.category}</td>
+                    <td style={{...s.td,maxWidth:160,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.subject}</td>
+                    <td style={s.td}><span style={{fontSize:12}}>{priLabel[t.priority] || t.priority}</span></td>
+                    <td style={s.td}>
+                      <span style={{...s.badge2,...(statusStyle[t.status]||{})}}>{t.status}</span>
+                    </td>
+                    <td style={s.td} onClick={e=>e.stopPropagation()}>
+                      <button style={s.btnAction} onClick={()=>openModal(t)}>อัปเดต</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      {/* Modal */}
+      {selected && (
+        <div style={s.overlay} onClick={()=>setSelected(null)}>
+          <div style={s.modal} onClick={e=>e.stopPropagation()}>
+            <h2 style={{fontSize:16,fontWeight:600,marginBottom:4,color:'#1a3d38'}}>อัปเดตสถานะ</h2>
+            <div style={{fontSize:12,color:'#5a8c85',marginBottom:20}}>{selected.id} · {selected.subject}</div>
+            <div style={s.mfield}>
+              <label style={s.mlabel}>สถานะใหม่</label>
+              <select style={s.select} value={newStatus} onChange={e=>setNewStatus(e.target.value)}>
+                {STATUS_OPTIONS.map(o=><option key={o} value={o}>{o}</option>)}
+              </select>
+            </div>
+            <div style={s.mfield}>
+              <label style={s.mlabel}>หมายเหตุ (ถ้ามี)</label>
+              <textarea style={s.textarea} value={note} onChange={e=>setNote(e.target.value)}
+                placeholder="เช่น เปลี่ยน RAM แล้ว ปัญหาหาย..."/>
+            </div>
+            {newStatus==='เสร็จสิ้น' && (
+              <div style={s.warnBox}>⚠️ ระบบจะส่ง Email + ลิงก์ CSAT ให้ผู้แจ้งอัตโนมัติ</div>
+            )}
+            <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginTop:16}}>
+              <button style={s.btnCancel} onClick={()=>setSelected(null)}>ยกเลิก</button>
+              <button style={s.btnSave} onClick={handleSave} disabled={saving}>
+                {saving?'⏳ กำลังบันทึก...':'💾 บันทึก'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {toast && <div style={s.toast}>{toast}</div>}
+    </div>
   );
 }
 
 const s = {
-  page        : { minHeight:'100vh', background:'#e8f4f2', padding:'24px 16px', fontFamily:'sans-serif' },
-  container   : { maxWidth:600, margin:'0 auto' },
-  header      : { display:'flex', alignItems:'center', gap:12, marginBottom:28 },
-  logo        : { width:44, height:44, background:'linear-gradient(135deg,#1a7f72,#0e9e8a)', borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, flexShrink:0 },
-  title       : { fontSize:20, fontWeight:600, color:'#1a3d38', margin:0 },
-  subtitle    : { fontSize:12, color:'#5a8c85', margin:0 },
-  card        : { background:'#f0f9f7', border:'1.5px solid #b0d8d0', borderRadius:14, padding:20, marginBottom:14 },
-  cardTitle   : { fontSize:12, fontWeight:600, color:'#5a8c85', textTransform:'uppercase', letterSpacing:.6, marginBottom:14 },
-  catGrid     : { display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 },
-  catChip     : { display:'flex', alignItems:'center', gap:10, padding:'10px 12px', background:'#e8f4f2', border:'1.5px solid #b0d8d0', borderRadius:10, cursor:'pointer' },
-  catChipActive:{ background:'#d1f0ea', border:'1.5px solid #1a7f72' },
-  field       : { marginBottom:14 },
-  label       : { display:'block', fontSize:12, fontWeight:500, color:'#5a8c85', marginBottom:5 },
-  input       : { width:'100%', padding:'10px 13px', background:'#e8f4f2', border:'1.5px solid #b0d8d0', borderRadius:8, fontSize:14, color:'#1a3d38', fontFamily:'sans-serif', outline:'none', boxSizing:'border-box' },
-  textarea    : { width:'100%', padding:'10px 13px', background:'#e8f4f2', border:'1.5px solid #b0d8d0', borderRadius:8, fontSize:14, color:'#1a3d38', fontFamily:'sans-serif', outline:'none', minHeight:90, resize:'vertical', boxSizing:'border-box' },
-  priChip     : { padding:'7px 14px', borderRadius:20, border:'1.5px solid #b0d8d0', fontSize:12, cursor:'pointer', color:'#5a8c85', background:'#e8f4f2' },
-  priChipActive:{ background:'#d1f0ea', border:'1.5px solid #1a7f72', color:'#1a3d38' },
-  btnSubmit   : { width:'100%', padding:14, background:'linear-gradient(135deg,#1a7f72,#0e9e8a)', border:'none', borderRadius:11, color:'#fff', fontSize:15, fontWeight:600, cursor:'pointer', marginTop:4 },
-  btnOutline  : { marginTop:20, padding:'10px 24px', background:'transparent', border:'1.5px solid #1a7f72', borderRadius:8, color:'#1a7f72', fontSize:13, cursor:'pointer' },
-  errorBox    : { background:'#fde8e8', border:'1px solid #f5c0c0', borderRadius:8, padding:'10px 14px', fontSize:13, color:'#c0392b', marginBottom:12 },
-  ticketBadge : { background:'#d1f0ea', border:'1.5px solid #1a7f72', borderRadius:10, padding:'10px 24px', fontSize:20, fontWeight:700, color:'#1a7f72', fontFamily:'monospace', letterSpacing:2 },
-  successCard : { maxWidth:480, margin:'60px auto', background:'#f0f9f7', border:'1.5px solid #b0d8d0', borderRadius:16, padding:40, textAlign:'center', color:'#1a3d38' },
+  page     : { minHeight:'100vh', background:'#e8f4f2', fontFamily:'sans-serif', color:'#1a3d38' },
+  topbar   : { background:'#f0f9f7', borderBottom:'1.5px solid #b0d8d0', padding:'12px 24px', display:'flex', alignItems:'center', justifyContent:'space-between' },
+  logo     : { width:36, height:36, background:'linear-gradient(135deg,#1a7f72,#0e9e8a)', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 },
+  badge    : { background:'#d1f0ea', border:'1px solid #b0d8d0', borderRadius:20, padding:'4px 12px', fontSize:12, color:'#1a3d38' },
+  kpiRow   : { display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:16 },
+  kpiCard  : { background:'#f0f9f7', border:'1.5px solid #b0d8d0', borderRadius:12, padding:16 },
+  filterBar: { display:'flex', alignItems:'center', gap:8, marginBottom:14, flexWrap:'wrap' },
+  chip     : { padding:'6px 14px', borderRadius:20, border:'1.5px solid #b0d8d0', fontSize:12, cursor:'pointer', color:'#5a8c85', background:'#f0f9f7' },
+  chipActive:{ background:'#1a7f72', border:'1.5px solid #1a7f72', color:'#fff' },
+  search   : { flex:1, background:'#f0f9f7', border:'1.5px solid #b0d8d0', borderRadius:8, padding:'6px 12px', fontSize:12, color:'#1a3d38', outline:'none', minWidth:160 },
+  btnRefresh:{ padding:'6px 14px', borderRadius:8, border:'1.5px solid #b0d8d0', background:'#f0f9f7', color:'#5a8c85', fontSize:12, cursor:'pointer' },
+  tableWrap: { background:'#f0f9f7', border:'1.5px solid #b0d8d0', borderRadius:14, overflow:'hidden' },
+  th       : { padding:'10px 12px', fontSize:11, color:'#5a8c85', fontWeight:500, textAlign:'left', letterSpacing:.4 },
+  tr       : { borderBottom:'1px solid #d6eee9', cursor:'pointer' },
+  td       : { padding:'12px', fontSize:13, verticalAlign:'middle' },
+  badge2   : { display:'inline-block', padding:'4px 10px', borderRadius:20, fontSize:11, fontWeight:500 },
+  btnAction: { padding:'5px 12px', borderRadius:6, border:'1.5px solid #1a7f72', background:'transparent', color:'#1a7f72', fontSize:11, cursor:'pointer' },
+  overlay  : { position:'fixed', inset:0, background:'rgba(0,0,0,.4)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:100, padding:20 },
+  modal    : { background:'#f0f9f7', border:'1.5px solid #b0d8d0', borderRadius:16, padding:28, width:'100%', maxWidth:440 },
+  mfield   : { marginBottom:16 },
+  mlabel   : { display:'block', fontSize:12, color:'#5a8c85', marginBottom:6 },
+  select   : { width:'100%', padding:'9px 12px', background:'#e8f4f2', border:'1.5px solid #b0d8d0', borderRadius:8, color:'#1a3d38', fontFamily:'sans-serif', fontSize:13, outline:'none' },
+  textarea : { width:'100%', padding:'9px 12px', background:'#e8f4f2', border:'1.5px solid #b0d8d0', borderRadius:8, color:'#1a3d38', fontFamily:'sans-serif', fontSize:13, outline:'none', minHeight:80, resize:'vertical', boxSizing:'border-box' },
+  warnBox  : { background:'#fef3c7', border:'1px solid #fcd34d', borderRadius:8, padding:'10px 12px', fontSize:12, color:'#92400e' },
+  btnCancel: { padding:'8px 16px', borderRadius:8, border:'1.5px solid #b0d8d0', background:'transparent', color:'#5a8c85', fontFamily:'sans-serif', fontSize:13, cursor:'pointer' },
+  btnSave  : { padding:'8px 20px', borderRadius:8, border:'none', background:'#1a7f72', color:'#fff', fontFamily:'sans-serif', fontSize:13, fontWeight:500, cursor:'pointer' },
+  toast    : { position:'fixed', bottom:24, right:24, background:'#1a7f72', color:'#fff', padding:'12px 20px', borderRadius:10, fontSize:13, fontWeight:500, zIndex:200 },
 };
