@@ -24,7 +24,7 @@ async function sendClosingEmail({ to, name, ticketId, subject }) {
 <tr><td align="center">
 <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden">
 <tr><td style="background:linear-gradient(135deg,#10b981,#059669);padding:32px;text-align:center">
-  <div style="font-size:48px">✅</div>
+  <div style="font-size:48px">&#x2705;</div>
   <h1 style="color:#fff;font-size:22px;margin:12px 0 4px">งานของคุณเสร็จสิ้นแล้ว!</h1>
   <p style="color:rgba(255,255,255,.8);font-size:14px;margin:0">${SYSTEM_NAME}</p>
 </td></tr>
@@ -35,9 +35,9 @@ async function sendClosingEmail({ to, name, ticketId, subject }) {
   </div>
   <p style="font-size:14px;color:#374151;line-height:1.7;margin-bottom:24px">เรียน คุณ${name}<br><br>ทีมไอทีได้ดำเนินการแก้ไข <strong>${subject}</strong> เรียบร้อยแล้ว</p>
   <div style="background:#fafafa;border:1px solid #e5e7eb;border-radius:12px;padding:24px">
-    <p style="font-size:15px;font-weight:600;color:#111827;margin-bottom:6px">😊 คุณพึงพอใจการบริการมากน้อยแค่ไหน?</p>
+    <p style="font-size:15px;font-weight:600;color:#111827;margin-bottom:6px">&#x1F60A; คุณพึงพอใจการบริการมากน้อยแค่ไหน?</p>
     <p style="font-size:13px;color:#6b7280;margin-bottom:20px">ใช้เวลาไม่ถึง 1 นาที</p>
-    <a href="${csatUrl}" style="display:inline-block;background:linear-gradient(135deg,#1a7f72,#0e9e8a);color:#fff;text-decoration:none;padding:14px 36px;border-radius:10px;font-size:15px;font-weight:600">⭐ ให้คะแนนความพึงพอใจ</a>
+    <a href="${csatUrl}" style="display:inline-block;background:linear-gradient(135deg,#1a7f72,#0e9e8a);color:#fff;text-decoration:none;padding:14px 36px;border-radius:10px;font-size:15px;font-weight:600">&#x2B50; ให้คะแนนความพึงพอใจ</a>
   </div>
 </td></tr>
 <tr><td style="background:#f9fafb;padding:20px 32px;text-align:center;border-top:1px solid #e5e7eb">
