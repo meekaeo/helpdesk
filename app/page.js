@@ -179,14 +179,14 @@ export default function Home() {
 
 const s = {
   page        : { minHeight:'100vh', background:'#e8f4f2', padding:'24px 16px', fontFamily:'sans-serif' },
-  container   : { maxWidth:600, margin:'0 auto' },
+  container   : { maxWidth:600, margin:'0 auto', width:'100%' },
   header      : { display:'flex', alignItems:'center', gap:12, marginBottom:28 },
   logo        : { width:44, height:44, background:'linear-gradient(135deg,#1a7f72,#0e9e8a)', borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, flexShrink:0 },
   title       : { fontSize:20, fontWeight:600, color:'#1a3d38', margin:0 },
   subtitle    : { fontSize:12, color:'#5a8c85', margin:0 },
   card        : { background:'#f0f9f7', border:'1.5px solid #b0d8d0', borderRadius:14, padding:20, marginBottom:14 },
   cardTitle   : { fontSize:12, fontWeight:600, color:'#5a8c85', textTransform:'uppercase', letterSpacing:.6, marginBottom:14 },
-  catGrid     : { display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 },
+  catGrid     : { display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))', gap:8 },
   catChip     : { display:'flex', alignItems:'center', gap:10, padding:'10px 12px', background:'#e8f4f2', border:'1.5px solid #b0d8d0', borderRadius:10, cursor:'pointer' },
   catChipActive:{ background:'#d1f0ea', border:'1.5px solid #1a7f72' },
   field       : { marginBottom:14 },
@@ -199,5 +199,5 @@ const s = {
   btnOutline  : { marginTop:20, padding:'10px 24px', background:'transparent', border:'1.5px solid #1a7f72', borderRadius:8, color:'#1a7f72', fontSize:13, cursor:'pointer' },
   errorBox    : { background:'#fde8e8', border:'1px solid #f5c0c0', borderRadius:8, padding:'10px 14px', fontSize:13, color:'#c0392b', marginBottom:12 },
   ticketBadge : { background:'#d1f0ea', border:'1.5px solid #1a7f72', borderRadius:10, padding:'10px 24px', fontSize:20, fontWeight:700, color:'#1a7f72', fontFamily:'monospace', letterSpacing:2 },
-  successCard : { maxWidth:480, margin:'60px auto', background:'#f0f9f7', border:'1.5px solid #b0d8d0', borderRadius:16, padding:40, textAlign:'center', color:'#1a3d38' },
+  successCard : { maxWidth:480, margin:'40px auto', background:'#f0f9f7', border:'1.5px solid #b0d8d0', borderRadius:16, padding:'32px 20px', textAlign:'center', color:'#1a3d38' },
 };
